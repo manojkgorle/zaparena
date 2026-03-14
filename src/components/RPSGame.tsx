@@ -42,33 +42,38 @@ export function RPSGame({
   }, [game.id, address]);
 
   const handleJoin = async () => {
-    if (!account || !address) return;
+    if (!address) return;
     setLoading(true);
     setError("");
 
     try {
-      const decimals = TOKEN_DECIMALS[game.wagerToken];
-      const rawAmount = BigInt(Math.floor(parseFloat(game.wagerAmount) * 10 ** decimals));
-      const tokenAddress = TOKEN_ADDRESSES[game.wagerToken];
-      const u256Amount = uint256.bnToUint256(rawAmount);
+      let txHash: string | undefined;
 
-      const tx = await account.execute([
-        {
-          contractAddress: tokenAddress,
-          entrypoint: "approve",
-          calldata: [ESCROW_CONTRACT, u256Amount.low.toString(), u256Amount.high.toString()],
-        },
-        {
-          contractAddress: ESCROW_CONTRACT,
-          entrypoint: "join_game",
-          calldata: [String(game.onChainId)],
-        },
-      ]);
+      if (account && game.onChainId) {
+        const decimals = TOKEN_DECIMALS[game.wagerToken];
+        const rawAmount = BigInt(Math.floor(parseFloat(game.wagerAmount) * 10 ** decimals));
+        const tokenAddress = TOKEN_ADDRESSES[game.wagerToken];
+        const u256Amount = uint256.bnToUint256(rawAmount);
+
+        const tx = await account.execute([
+          {
+            contractAddress: tokenAddress,
+            entrypoint: "approve",
+            calldata: [ESCROW_CONTRACT, u256Amount.low.toString(), u256Amount.high.toString()],
+          },
+          {
+            contractAddress: ESCROW_CONTRACT,
+            entrypoint: "join_game",
+            calldata: [String(game.onChainId)],
+          },
+        ]);
+        txHash = tx.transaction_hash;
+      }
 
       await fetch(`/api/games/${game.id}/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ joiner: address, txHash: tx.transaction_hash }),
+        body: JSON.stringify({ joiner: address, txHash }),
       });
 
       onUpdate();
@@ -136,7 +141,7 @@ export function RPSGame({
             {error && <p className="text-arena-danger text-sm mb-4">{error}</p>}
             <button
               onClick={handleJoin}
-              disabled={loading || !account}
+              disabled={loading || !address}
               className="px-8 py-4 rounded-xl bg-arena-accent text-black font-bold text-lg font-display hover:bg-arena-accent/90 transition-all disabled:opacity-50"
             >
               {loading ? "Joining..." : `Join for ${game.wagerAmount} ${game.wagerToken}`}

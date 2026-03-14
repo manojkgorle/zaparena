@@ -204,7 +204,7 @@ export function PricePredictionGame({
           {!isInGame && timeLeft > 0 && (
             <button
               onClick={() => handleJoinSide("up")}
-              disabled={loading || !account}
+              disabled={loading || !address}
               className="w-full py-2 rounded-lg bg-arena-accent text-black font-bold text-sm hover:bg-arena-accent/90 transition-all disabled:opacity-50"
             >
               {loading ? "..." : `Bet UP (${game.wagerAmount} ${game.wagerToken})`}
@@ -234,7 +234,7 @@ export function PricePredictionGame({
           {!isInGame && timeLeft > 0 && (
             <button
               onClick={() => handleJoinSide("down")}
-              disabled={loading || !account}
+              disabled={loading || !address}
               className="w-full py-2 rounded-lg bg-arena-danger text-white font-bold text-sm hover:bg-arena-danger/90 transition-all disabled:opacity-50"
             >
               {loading ? "..." : `Bet DOWN (${game.wagerAmount} ${game.wagerToken})`}
