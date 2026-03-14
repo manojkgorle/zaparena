@@ -28,50 +28,55 @@ export default function CreateGamePage() {
   const [error, setError] = useState("");
 
   const handleCreate = async () => {
-    if (!account || !address || gameType === null) return;
+    if (!address || gameType === null) return;
     setLoading(true);
     setError("");
 
     try {
-      const decimals = TOKEN_DECIMALS[token];
-      const rawAmount = BigInt(Math.floor(parseFloat(amount) * 10 ** decimals));
-      const tokenAddress = TOKEN_ADDRESSES[token];
-      const u256Amount = uint256.bnToUint256(rawAmount);
-
-      const tx = await account.execute([
-        {
-          contractAddress: tokenAddress,
-          entrypoint: "approve",
-          calldata: [ESCROW_CONTRACT, u256Amount.low.toString(), u256Amount.high.toString()],
-        },
-        {
-          contractAddress: ESCROW_CONTRACT,
-          entrypoint: "create_game",
-          calldata: [
-            gameType.toString(),
-            tokenAddress,
-            u256Amount.low.toString(),
-            u256Amount.high.toString(),
-          ],
-        },
-      ]);
-
-      // Get on-chain game ID by reading game_count after tx
+      let txHash: string | undefined;
       let onChainId: number | undefined;
-      try {
-        const provider = new RpcProvider({ nodeUrl: SEPOLIA_RPC });
-        await provider.waitForTransaction(tx.transaction_hash);
-        const result = await provider.callContract({
-          contractAddress: ESCROW_CONTRACT,
-          entrypoint: "get_game_count",
-          calldata: [],
-        });
-        onChainId = Number(result[0]);
-      } catch (e) {
-        console.warn("Could not read on-chain game ID:", e);
+
+      // On-chain: only if we have a Starknet account (Argent/Braavos)
+      if (account) {
+        const decimals = TOKEN_DECIMALS[token];
+        const rawAmount = BigInt(Math.floor(parseFloat(amount) * 10 ** decimals));
+        const tokenAddress = TOKEN_ADDRESSES[token];
+        const u256Amount = uint256.bnToUint256(rawAmount);
+
+        const tx = await account.execute([
+          {
+            contractAddress: tokenAddress,
+            entrypoint: "approve",
+            calldata: [ESCROW_CONTRACT, u256Amount.low.toString(), u256Amount.high.toString()],
+          },
+          {
+            contractAddress: ESCROW_CONTRACT,
+            entrypoint: "create_game",
+            calldata: [
+              gameType.toString(),
+              tokenAddress,
+              u256Amount.low.toString(),
+              u256Amount.high.toString(),
+            ],
+          },
+        ]);
+        txHash = tx.transaction_hash;
+
+        try {
+          const provider = new RpcProvider({ nodeUrl: SEPOLIA_RPC });
+          await provider.waitForTransaction(tx.transaction_hash);
+          const result = await provider.callContract({
+            contractAddress: ESCROW_CONTRACT,
+            entrypoint: "get_game_count",
+            calldata: [],
+          });
+          onChainId = Number(result[0]);
+        } catch (e) {
+          console.warn("Could not read on-chain game ID:", e);
+        }
       }
 
-      // Register game in our API
+      // Register game in API (works for both Privy and Starknet wallet users)
       const res = await fetch("/api/games", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,7 +85,7 @@ export default function CreateGamePage() {
           creator: address,
           wagerToken: token,
           wagerAmount: amount,
-          txHash: tx.transaction_hash,
+          txHash,
           onChainId,
           ...(gameType === GameType.PricePrediction && {
             targetToken,

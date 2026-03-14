@@ -2,14 +2,13 @@
 
 import { useAccount } from "@starknet-react/core";
 import { usePrivy } from "@privy-io/react-auth";
-import { useStarkzapPrivyWallet } from "./useStarkzapWallet";
 
-// Unified wallet hook: returns address and execute function from either
-// starknet-react (Argent/Braavos) or Starkzap Privy wallet
+// Unified wallet hook
+// - Starknet wallets (Argent/Braavos): full on-chain support
+// - Privy (email/social): API-only identity for prediction pools
 export function useWallet() {
   const { account, address: starknetAddress, status } = useAccount();
-  const { authenticated } = usePrivy();
-  const privy = useStarkzapPrivyWallet();
+  const { authenticated, user } = usePrivy();
 
   // Prefer starknet-react wallet if connected
   if (status === "connected" && starknetAddress && account) {
@@ -23,11 +22,19 @@ export function useWallet() {
     };
   }
 
-  // Fall back to Starkzap Privy wallet
-  if (authenticated && privy.wallet) {
+  // Privy user — generate a deterministic address from their user ID
+  // This works for API-side games (prediction pools) but not on-chain txs
+  if (authenticated && user) {
+    // Create a valid-looking hex address from the Privy user ID
+    const privyAddress = "0x" + Array.from(user.id)
+      .map((c) => c.charCodeAt(0).toString(16).padStart(2, "0"))
+      .join("")
+      .slice(0, 62)
+      .padStart(64, "0");
+
     return {
-      address: privy.address!,
-      account: privy.wallet, // StarkZap wallet has .execute() like starknet Account
+      address: privyAddress,
+      account: null, // No on-chain account — can't execute txs
       connected: true,
       source: "privy" as const,
       loading: false,
@@ -35,31 +42,6 @@ export function useWallet() {
     };
   }
 
-  // Loading state
-  if (authenticated && privy.loading) {
-    return {
-      address: null,
-      account: null,
-      connected: false,
-      source: "privy" as const,
-      loading: true,
-      error: null,
-    };
-  }
-
-  // Privy error
-  if (authenticated && privy.error) {
-    return {
-      address: null,
-      account: null,
-      connected: false,
-      source: "privy" as const,
-      loading: false,
-      error: privy.error,
-    };
-  }
-
-  // Not connected
   return {
     address: null,
     account: null,
