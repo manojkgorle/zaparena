@@ -1,0 +1,1 @@
+{"version":1,"contracts":[{"id":"4bdnd6gcc4bh0","package_name":"zaparena","contract_name":"ZapArenaEscrow","module_path":"zaparena::escrow::ZapArenaEscrow","artifacts":{"sierra":"zaparena_ZapArenaEscrow.contract_class.json","casm":"zaparena_ZapArenaEscrow.compiled_contract_class.json"}}]}
