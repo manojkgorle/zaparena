@@ -76,19 +76,18 @@ export function PricePredictionGame({
 
   useEffect(() => {
     if (timeLeft === 0 && (game.status === GameStatus.Active || game.status === GameStatus.Open) && totalPlayers >= 2) {
-      const timeout = setTimeout(triggerResolve, 1000);
-      return () => clearTimeout(timeout);
+      triggerResolve(); // resolve immediately, no delay
     }
   }, [timeLeft, game.status, totalPlayers, triggerResolve]);
 
   const handleJoinSide = async (side: "up" | "down") => {
-    if (!account || !address) return;
+    if (!address) return;
     setLoading(true);
     setError("");
 
     try {
-      // On-chain: approve + join_prediction (deposits wager into escrow)
-      if (game.onChainId) {
+      // On-chain: only if we have a Starknet account
+      if (account && game.onChainId) {
         const decimals = TOKEN_DECIMALS[game.wagerToken];
         const rawAmount = BigInt(Math.floor(parseFloat(game.wagerAmount) * 10 ** decimals));
         const tokenAddress = TOKEN_ADDRESSES[game.wagerToken];

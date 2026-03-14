@@ -28,7 +28,7 @@ export default function GamePage() {
 
   useEffect(() => {
     fetchGame();
-    const interval = setInterval(fetchGame, 3000);
+    const interval = setInterval(fetchGame, 1000);
     return () => clearInterval(interval);
   }, [fetchGame]);
 
